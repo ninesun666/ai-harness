@@ -1,6 +1,7 @@
 @echo off
-chcp 65001 >nul 2>&1
 title AI Harness
+set PYTHONIOENCODING=utf-8
+chcp 65001 >nul 2>&1
 
 echo.
 echo ============================================================
@@ -10,7 +11,7 @@ echo.
 
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found, please install Python 3.8+
+    echo [ERROR] Python not found
     pause
     exit /b 1
 )
