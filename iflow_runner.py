@@ -495,9 +495,9 @@ def run_interactive():
     """交互式菜单模式"""
     print("\n")
     print("=" * 60)
-    print("         AI Harness - iFlow 自动化开发工具")
+    print("       AI Harness - iFlow Auto Development Tool")
     print("=" * 60)
-    print("  让 AI 自主完成软件开发任务")
+    print("  Let AI complete software development tasks autonomously")
     print("=" * 60)
     print()
     
@@ -506,7 +506,8 @@ def run_interactive():
     if iflow_path:
         print(f"[OK] iFlow CLI: {iflow_path}")
     else:
-        print("[!] iFlow CLI 未安装，请运行: npm install -g @iflow-ai/iflow-cli")
+        print("[!] iFlow CLI not installed")
+        print("    Run: npm install -g @iflow-ai/iflow-cli")
         print()
     
     # 扫描可用项目
@@ -514,34 +515,36 @@ def run_interactive():
     projects = runner.scan_projects()
     
     if not projects:
-        print("[!] 未找到项目，请先创建项目目录和 .agent-harness/feature_list.json")
+        print("[!] No projects found")
+        print("    Create .agent-harness/feature_list.json in your project")
         print()
-        print("按 Enter 键退出...")
+        print("Press Enter to exit...")
         input()
         return
     
-    print(f"\n[*] 发现 {len(projects)} 个项目:")
+    print(f"\n[*] Found {len(projects)} projects:")
     for i, proj in enumerate(projects, 1):
         status = runner.get_project_status(proj)
         progress = f"{status['completed']}/{status['total']}"
-        print(f"   {i}. {proj} ({progress})")
+        proj_name = Path(proj).name
+        print(f"   {i}. {proj_name} ({progress})")
     
     print()
     print("-" * 60)
-    print("操作菜单:")
-    print("  [1] 查看状态      - 显示选中项目的详细信息")
-    print("  [2] 单次执行      - 执行一个任务后停止")
-    print("  [3] 持续运行      - 自动执行直到所有任务完成")
-    print("  [4] 创建新项目    - 初始化一个新的项目结构")
-    print("  [Q] 退出")
+    print("Menu:")
+    print("  [1] View Status    - Show project details")
+    print("  [2] Run Once       - Execute one task")
+    print("  [3] Continuous     - Run until all tasks done")
+    print("  [4] New Project    - Create new project structure")
+    print("  [Q] Exit")
     print("-" * 60)
     
     while True:
         print()
-        choice = input("请选择操作 [1-4/Q]: ").strip().upper()
+        choice = input("Select [1-4/Q]: ").strip().upper()
         
         if choice == 'Q' or choice == '':
-            print("\n再见!")
+            print("\nBye!")
             break
             
         elif choice == '1':
@@ -549,7 +552,7 @@ def run_interactive():
             proj = select_project(projects)
             if proj:
                 print("\n" + "="*60)
-                print(f"[*] 项目: {proj}")
+                print(f"[*] Project: {proj}")
                 print("="*60)
                 status = runner.get_project_status(proj)
                 print(json.dumps(status, ensure_ascii=False, indent=2))
@@ -558,42 +561,43 @@ def run_interactive():
             # 单次执行
             proj = select_project(projects)
             if proj:
-                print(f"\n[>] 开始执行: {proj}")
+                print(f"\n[>] Running: {proj}")
                 print("="*60)
                 result = runner.run_single(proj)
-                print("\n执行结果:", json.dumps(result, ensure_ascii=False, indent=2))
+                print("\nResult:", json.dumps(result, ensure_ascii=False, indent=2))
                 projects = runner.scan_projects()  # 刷新项目列表
                 
         elif choice == '3':
             # 持续运行
             proj = select_project(projects)
             if proj:
-                print(f"\n[>>] 持续运行: {proj}")
+                print(f"\n[>>] Continuous: {proj}")
                 print("="*60)
-                print("按 Ctrl+C 可停止运行")
+                print("Press Ctrl+C to stop")
                 print()
                 runner.run_continuous(proj, interval=60)
                 projects = runner.scan_projects()  # 刷新项目列表
                 
         elif choice == '4':
             # 创建新项目
-            proj_name = input("请输入项目名称: ").strip()
+            proj_name = input("Project name: ").strip()
             if proj_name:
                 create_new_project(proj_name)
                 projects = runner.scan_projects()  # 刷新项目列表
                 
         else:
-            print("[!] 无效选择，请重试")
+            print("[!] Invalid choice")
         
         # 刷新项目列表显示
         print("\n" + "-" * 60)
         projects = runner.scan_projects()
         if projects:
-            print(f"[*] 项目列表 ({len(projects)}):")
+            print(f"[*] Projects ({len(projects)}):")
             for i, proj in enumerate(projects, 1):
                 status = runner.get_project_status(proj)
                 progress = f"{status['completed']}/{status['total']}"
-                print(f"   {i}. {proj} ({progress})")
+                proj_name = Path(proj).name
+                print(f"   {i}. {proj_name} ({progress})")
 
 
 def select_project(projects: List[str]) -> Optional[str]:
@@ -601,18 +605,19 @@ def select_project(projects: List[str]) -> Optional[str]:
     if len(projects) == 1:
         return projects[0]
     
-    print(f"\n选择项目 [1-{len(projects)}]:")
+    print(f"\nSelect project [1-{len(projects)}]:")
     for i, proj in enumerate(projects, 1):
-        print(f"   {i}. {proj}")
+        proj_name = Path(proj).name
+        print(f"   {i}. {proj_name}")
     
     try:
-        idx = int(input("输入编号: ").strip())
+        idx = int(input("Number: ").strip())
         if 1 <= idx <= len(projects):
             return projects[idx - 1]
     except:
         pass
     
-    print("❌ 无效选择")
+    print("[!] Invalid selection")
     return None
 
 
@@ -624,7 +629,7 @@ def create_new_project(name: str):
     harness_dir = project_dir / ".agent-harness"
     
     if project_dir.exists():
-        print(f"❌ 项目目录已存在: {name}")
+        print(f"[!] Directory already exists: {name}")
         return
     
     # 创建目录结构
@@ -632,7 +637,7 @@ def create_new_project(name: str):
     
     # 创建 feature_list.json
     feature_list = {
-        "project_spec": f"{name} - 项目描述",
+        "project_spec": f"{name} - Project description",
         "created_at": datetime.now().isoformat(),
         "total_features": 0,
         "completed": 0,
@@ -648,8 +653,10 @@ def create_new_project(name: str):
         f.write(f"# Progress Log - {name}\n")
         f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
     
-    print(f"✅ 项目创建成功: {name}/")
-    print(f"   └── .agent-harness/")
+    print(f"[OK] Project created: {name}/")
+    print(f"     .agent-harness/")
+    print(f"       feature_list.json")
+    print(f"       claude-progress.txt")
     print(f"       ├── feature_list.json")
     print(f"       └── claude-progress.txt")
 
