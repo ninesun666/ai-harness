@@ -90,7 +90,15 @@ class iFlowRunner:
         
     def get_next_task(self, project_name: str = "ninesun-blog") -> Optional[Dict]:
         """获取下一个待完成的任务"""
-        feature_file = self.project_root / project_name / ".agent-harness" / "feature_list.json"
+        # 支持相对路径和绝对路径
+        if Path(project_name).is_absolute():
+            feature_file = Path(project_name) / ".agent-harness" / "feature_list.json"
+        else:
+            feature_file = self.project_root / project_name / ".agent-harness" / "feature_list.json"
+        
+        if not feature_file.exists():
+            # 尝试父目录
+            feature_file = self.project_root.parent / project_name / ".agent-harness" / "feature_list.json"
         
         if not feature_file.exists():
             print(f"feature_list.json 不存在: {feature_file}")
@@ -243,22 +251,45 @@ class iFlowRunner:
         """扫描所有可用项目"""
         projects = []
         
-        # 扫描当前目录下的所有子目录
-        for item in self.project_root.iterdir():
-            if item.is_dir() and not item.name.startswith('.'):
-                harness_dir = item / ".agent-harness"
-                feature_file = harness_dir / "feature_list.json"
-                if feature_file.exists():
-                    projects.append(item.name)
+        # 扫描的目录列表：当前目录、父目录、用户指定目录
+        scan_dirs = [
+            self.project_root,  # 当前目录
+            self.project_root.parent,  # 父目录 (常见场景：ai-harness 作为子目录)
+        ]
         
-        return sorted(projects)
+        scanned = set()
+        for scan_dir in scan_dirs:
+            if not scan_dir.exists() or str(scan_dir) in scanned:
+                continue
+            scanned.add(str(scan_dir))
+            
+            try:
+                for item in scan_dir.iterdir():
+                    if item.is_dir() and not item.name.startswith('.') and item.name not in ['node_modules', '__pycache__', '.git']:
+                        harness_dir = item / ".agent-harness"
+                        feature_file = harness_dir / "feature_list.json"
+                        if feature_file.exists():
+                            # 返回绝对路径
+                            projects.append(str(item.resolve()))
+            except Exception as e:
+                pass
+        
+        return sorted(set(projects))
     
     def get_project_status(self, project_name: str) -> Dict:
         """获取项目状态"""
-        feature_file = self.project_root / project_name / ".agent-harness" / "feature_list.json"
+        # 支持相对路径和绝对路径
+        if Path(project_name).is_absolute():
+            feature_file = Path(project_name) / ".agent-harness" / "feature_list.json"
+        else:
+            feature_file = self.project_root / project_name / ".agent-harness" / "feature_list.json"
         
         if not feature_file.exists():
-            return {"error": "项目不存在"}
+            # 尝试父目录
+            feature_file = self.project_root.parent / project_name / ".agent-harness" / "feature_list.json"
+        
+        if not feature_file.exists():
+            return {"error": f"项目不存在: {project_name}"}
         
         try:
             with open(feature_file, 'r', encoding='utf-8') as f:
@@ -411,8 +442,8 @@ class iFlowRunner:
 def main():
     parser = argparse.ArgumentParser(description='iFlow Runner - 自动化运行 iFlow CLI')
     parser.add_argument('--project-root', default=str(Path.cwd()), help='项目根目录')
-    parser.add_argument('--project', default='ninesun-blog', help='项目名称')
-    parser.add_argument('--action', choices=['run', 'continuous', 'status'], 
+    parser.add_argument('--project', default=None, help='项目名称或路径')
+    parser.add_argument('--action', choices=['run', 'continuous', 'status', 'scan'], 
                        default='status', help='执行的操作')
     parser.add_argument('--interval', type=int, default=60, help='持续模式间隔秒数')
     parser.add_argument('--timeout', type=int, default=600, help='单次执行超时秒数')
@@ -423,14 +454,40 @@ def main():
     
     runner = iFlowRunner(args.project_root)
     
+    # 扫描可用项目
+    projects = runner.scan_projects()
+    
+    if args.action == 'scan' or args.action == 'status':
+        print(f"📋 发现 {len(projects)} 个项目:\n")
+        for proj in projects:
+            status = runner.get_project_status(proj)
+            print(f"  • {Path(proj).name}")
+            print(f"    进度: {status.get('progress', 'N/A')}")
+            if status.get('next_task'):
+                print(f"    下一个任务: {status['next_task'].get('description', 'N/A')}")
+            print()
+        
+        if args.action == 'scan':
+            return
+    
+    # 如果没有指定项目，使用第一个可用项目
+    project = args.project
+    if not project:
+        if projects:
+            project = projects[0]
+            print(f"🎯 自动选择项目: {Path(project).name}\n")
+        else:
+            print("❌ 未找到可用项目，请使用 --project 指定项目路径")
+            return
+    
     if args.action == 'status':
-        result = runner.status(args.project)
+        result = runner.get_project_status(project)
         print(json.dumps(result, indent=2, ensure_ascii=False))
     elif args.action == 'run':
-        result = runner.run_single(args.project, args.timeout, args.max_turns)
+        result = runner.run_single(project, args.timeout, args.max_turns)
         print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
     elif args.action == 'continuous':
-        runner.run_continuous(args.project, args.interval, args.max_iterations, 
+        runner.run_continuous(project, args.interval, args.max_iterations, 
                              args.timeout, args.max_turns)
 
 
