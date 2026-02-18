@@ -239,6 +239,64 @@ class iFlowRunner:
                 "error": str(e)
             }
     
+    def scan_projects(self) -> List[str]:
+        """扫描所有可用项目"""
+        projects = []
+        
+        # 扫描当前目录下的所有子目录
+        for item in self.project_root.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                harness_dir = item / ".agent-harness"
+                feature_file = harness_dir / "feature_list.json"
+                if feature_file.exists():
+                    projects.append(item.name)
+        
+        return sorted(projects)
+    
+    def get_project_status(self, project_name: str) -> Dict:
+        """获取项目状态"""
+        feature_file = self.project_root / project_name / ".agent-harness" / "feature_list.json"
+        
+        if not feature_file.exists():
+            return {"error": "项目不存在"}
+        
+        try:
+            with open(feature_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            features = data.get("features", [])
+            completed = sum(1 for f in features if f.get("passes", False))
+            total = len(features)
+            
+            # 获取下一个任务
+            next_task = None
+            for feature in features:
+                if not feature.get("passes", False):
+                    # 检查依赖是否满足
+                    deps = feature.get("dependencies", [])
+                    deps_satisfied = all(
+                        any(f.get("id") == dep and f.get("passes", False) for f in features)
+                        for dep in deps
+                    )
+                    if deps_satisfied:
+                        next_task = feature
+                        break
+            
+            return {
+                "project": project_name,
+                "total_tasks": total,
+                "completed": completed,
+                "pending": total - completed,
+                "progress": f"{completed}/{total} ({round(completed/total*100) if total > 0 else 0}%)",
+                "next_task": {
+                    "id": next_task.get("id"),
+                    "description": next_task.get("description"),
+                    "priority": next_task.get("priority")
+                } if next_task else None
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
     def run_single(self, project_name: str = "ninesun-blog", timeout: int = 600, max_turns: int = 50) -> Dict:
         """执行单次任务"""
         # 获取下一个任务
@@ -376,5 +434,172 @@ def main():
                              args.timeout, args.max_turns)
 
 
+def run_interactive():
+    """交互式菜单模式"""
+    print("\n")
+    print("╔══════════════════════════════════════════════════════════╗")
+    print("║           AI Harness - iFlow 自动化开发工具               ║")
+    print("╠══════════════════════════════════════════════════════════╣")
+    print("║  让 AI 自主完成软件开发任务                                ║")
+    print("╚══════════════════════════════════════════════════════════╝")
+    print()
+    
+    # 检查依赖
+    iflow_path = find_iflow_path()
+    if iflow_path:
+        print(f"✅ iFlow CLI: {iflow_path}")
+    else:
+        print("⚠️ iFlow CLI 未安装，请运行: npm install -g @iflow-ai/iflow-cli")
+        print()
+    
+    # 扫描可用项目
+    runner = iFlowRunner(os.getcwd())
+    projects = runner.scan_projects()
+    
+    if not projects:
+        print("📁 未找到项目，请先创建项目目录和 .agent-harness/feature_list.json")
+        print()
+        print("按任意键退出...")
+        input()
+        return
+    
+    print(f"\n📋 发现 {len(projects)} 个项目:")
+    for i, proj in enumerate(projects, 1):
+        status = runner.get_project_status(proj)
+        progress = f"{status['completed']}/{status['total']}"
+        print(f"   {i}. {proj} ({progress})")
+    
+    print()
+    print("─────────────────────────────────────────────────────────────")
+    print("操作菜单:")
+    print("  [1] 查看状态      - 显示选中项目的详细信息")
+    print("  [2] 单次执行      - 执行一个任务后停止")
+    print("  [3] 持续运行      - 自动执行直到所有任务完成")
+    print("  [4] 创建新项目    - 初始化一个新的项目结构")
+    print("  [Q] 退出")
+    print("─────────────────────────────────────────────────────────────")
+    
+    while True:
+        print()
+        choice = input("请选择操作 [1-4/Q]: ").strip().upper()
+        
+        if choice == 'Q' or choice == '':
+            print("\n👋 再见!")
+            break
+            
+        elif choice == '1':
+            # 查看状态
+            proj = select_project(projects)
+            if proj:
+                print("\n" + "="*60)
+                print(f"📊 项目: {proj}")
+                print("="*60)
+                status = runner.get_project_status(proj)
+                print(json.dumps(status, ensure_ascii=False, indent=2))
+                
+        elif choice == '2':
+            # 单次执行
+            proj = select_project(projects)
+            if proj:
+                print(f"\n🚀 开始执行: {proj}")
+                print("="*60)
+                result = runner.run_single(proj)
+                print("\n执行结果:", json.dumps(result, ensure_ascii=False, indent=2))
+                projects = runner.scan_projects()  # 刷新项目列表
+                
+        elif choice == '3':
+            # 持续运行
+            proj = select_project(projects)
+            if proj:
+                print(f"\n🔄 持续运行: {proj}")
+                print("="*60)
+                print("按 Ctrl+C 可停止运行")
+                print()
+                runner.run_continuous(proj, interval=60)
+                projects = runner.scan_projects()  # 刷新项目列表
+                
+        elif choice == '4':
+            # 创建新项目
+            proj_name = input("请输入项目名称: ").strip()
+            if proj_name:
+                create_new_project(proj_name)
+                projects = runner.scan_projects()  # 刷新项目列表
+                
+        else:
+            print("❌ 无效选择，请重试")
+        
+        # 刷新项目列表显示
+        print("\n─────────────────────────────────────────────────────────────")
+        projects = runner.scan_projects()
+        if projects:
+            print(f"📋 项目列表 ({len(projects)}):")
+            for i, proj in enumerate(projects, 1):
+                status = runner.get_project_status(proj)
+                progress = f"{status['completed']}/{status['total']}"
+                print(f"   {i}. {proj} ({progress})")
+
+
+def select_project(projects: List[str]) -> Optional[str]:
+    """选择项目"""
+    if len(projects) == 1:
+        return projects[0]
+    
+    print(f"\n选择项目 [1-{len(projects)}]:")
+    for i, proj in enumerate(projects, 1):
+        print(f"   {i}. {proj}")
+    
+    try:
+        idx = int(input("输入编号: ").strip())
+        if 1 <= idx <= len(projects):
+            return projects[idx - 1]
+    except:
+        pass
+    
+    print("❌ 无效选择")
+    return None
+
+
+def create_new_project(name: str):
+    """创建新项目结构"""
+    import shutil
+    
+    project_dir = Path(name)
+    harness_dir = project_dir / ".agent-harness"
+    
+    if project_dir.exists():
+        print(f"❌ 项目目录已存在: {name}")
+        return
+    
+    # 创建目录结构
+    harness_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 创建 feature_list.json
+    feature_list = {
+        "project_spec": f"{name} - 项目描述",
+        "created_at": datetime.now().isoformat(),
+        "total_features": 0,
+        "completed": 0,
+        "pending": 0,
+        "features": []
+    }
+    
+    with open(harness_dir / "feature_list.json", 'w', encoding='utf-8') as f:
+        json.dump(feature_list, f, ensure_ascii=False, indent=2)
+    
+    # 创建进度文件
+    with open(harness_dir / "claude-progress.txt", 'w', encoding='utf-8') as f:
+        f.write(f"# Progress Log - {name}\n")
+        f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+    
+    print(f"✅ 项目创建成功: {name}/")
+    print(f"   └── .agent-harness/")
+    print(f"       ├── feature_list.json")
+    print(f"       └── claude-progress.txt")
+
+
 if __name__ == "__main__":
-    main()
+    # 检查是否为交互模式
+    if '--interactive' in sys.argv or '-i' in sys.argv:
+        run_interactive()
+    else:
+        main()
