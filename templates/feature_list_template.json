@@ -1,0 +1,41 @@
+{
+  "project_spec": "你的项目描述 - 简要说明项目目标和核心功能",
+  "created_at": "2026-02-16T00:00:00",
+  "last_updated": "2026-02-16T00:00:00",
+  
+  "modules": {
+    "description": "模块化功能区域",
+    "list": [
+      {
+        "id": "M001",
+        "name": "模块名称",
+        "description": "模块描述",
+        "status": "pending"
+      }
+    ]
+  },
+  
+  "total_features": 0,
+  "completed": 0,
+  "in_progress": 0,
+  "pending": 0,
+  
+  "features": [
+    {
+      "id": "F001",
+      "category": "ui",
+      "module": "M001",
+      "description": "功能描述 - 具体要实现什么",
+      "priority": "high",
+      "author": "ai",
+      "steps": [
+        "步骤1 - 具体的实现步骤",
+        "步骤2",
+        "步骤3"
+      ],
+      "passes": false,
+      "dependencies": [],
+      "notes": "备注信息（可选）"
+    }
+  ]
+}
