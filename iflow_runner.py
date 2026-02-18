@@ -494,19 +494,19 @@ def main():
 def run_interactive():
     """交互式菜单模式"""
     print("\n")
-    print("╔══════════════════════════════════════════════════════════╗")
-    print("║           AI Harness - iFlow 自动化开发工具               ║")
-    print("╠══════════════════════════════════════════════════════════╣")
-    print("║  让 AI 自主完成软件开发任务                                ║")
-    print("╚══════════════════════════════════════════════════════════╝")
+    print("=" * 60)
+    print("         AI Harness - iFlow 自动化开发工具")
+    print("=" * 60)
+    print("  让 AI 自主完成软件开发任务")
+    print("=" * 60)
     print()
     
     # 检查依赖
     iflow_path = find_iflow_path()
     if iflow_path:
-        print(f"✅ iFlow CLI: {iflow_path}")
+        print(f"[OK] iFlow CLI: {iflow_path}")
     else:
-        print("⚠️ iFlow CLI 未安装，请运行: npm install -g @iflow-ai/iflow-cli")
+        print("[!] iFlow CLI 未安装，请运行: npm install -g @iflow-ai/iflow-cli")
         print()
     
     # 扫描可用项目
@@ -514,34 +514,34 @@ def run_interactive():
     projects = runner.scan_projects()
     
     if not projects:
-        print("📁 未找到项目，请先创建项目目录和 .agent-harness/feature_list.json")
+        print("[!] 未找到项目，请先创建项目目录和 .agent-harness/feature_list.json")
         print()
-        print("按任意键退出...")
+        print("按 Enter 键退出...")
         input()
         return
     
-    print(f"\n📋 发现 {len(projects)} 个项目:")
+    print(f"\n[*] 发现 {len(projects)} 个项目:")
     for i, proj in enumerate(projects, 1):
         status = runner.get_project_status(proj)
         progress = f"{status['completed']}/{status['total']}"
         print(f"   {i}. {proj} ({progress})")
     
     print()
-    print("─────────────────────────────────────────────────────────────")
+    print("-" * 60)
     print("操作菜单:")
     print("  [1] 查看状态      - 显示选中项目的详细信息")
     print("  [2] 单次执行      - 执行一个任务后停止")
     print("  [3] 持续运行      - 自动执行直到所有任务完成")
     print("  [4] 创建新项目    - 初始化一个新的项目结构")
     print("  [Q] 退出")
-    print("─────────────────────────────────────────────────────────────")
+    print("-" * 60)
     
     while True:
         print()
         choice = input("请选择操作 [1-4/Q]: ").strip().upper()
         
         if choice == 'Q' or choice == '':
-            print("\n👋 再见!")
+            print("\n再见!")
             break
             
         elif choice == '1':
@@ -549,7 +549,7 @@ def run_interactive():
             proj = select_project(projects)
             if proj:
                 print("\n" + "="*60)
-                print(f"📊 项目: {proj}")
+                print(f"[*] 项目: {proj}")
                 print("="*60)
                 status = runner.get_project_status(proj)
                 print(json.dumps(status, ensure_ascii=False, indent=2))
@@ -558,7 +558,7 @@ def run_interactive():
             # 单次执行
             proj = select_project(projects)
             if proj:
-                print(f"\n🚀 开始执行: {proj}")
+                print(f"\n[>] 开始执行: {proj}")
                 print("="*60)
                 result = runner.run_single(proj)
                 print("\n执行结果:", json.dumps(result, ensure_ascii=False, indent=2))
@@ -568,7 +568,7 @@ def run_interactive():
             # 持续运行
             proj = select_project(projects)
             if proj:
-                print(f"\n🔄 持续运行: {proj}")
+                print(f"\n[>>] 持续运行: {proj}")
                 print("="*60)
                 print("按 Ctrl+C 可停止运行")
                 print()
@@ -583,13 +583,13 @@ def run_interactive():
                 projects = runner.scan_projects()  # 刷新项目列表
                 
         else:
-            print("❌ 无效选择，请重试")
+            print("[!] 无效选择，请重试")
         
         # 刷新项目列表显示
-        print("\n─────────────────────────────────────────────────────────────")
+        print("\n" + "-" * 60)
         projects = runner.scan_projects()
         if projects:
-            print(f"📋 项目列表 ({len(projects)}):")
+            print(f"[*] 项目列表 ({len(projects)}):")
             for i, proj in enumerate(projects, 1):
                 status = runner.get_project_status(proj)
                 progress = f"{status['completed']}/{status['total']}"
