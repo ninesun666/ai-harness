@@ -1,0 +1,39 @@
+{
+  "name": "ai-harness",
+  "version": "1.0.0",
+  "description": "AI自动化开发框架 - 让iFlow CLI持续自主完成软件开发任务",
+  "bin": {
+    "ai-harness": "./bin/ai-harness.js"
+  },
+  "files": [
+    "bin/",
+    "iflow_runner.py",
+    "templates/",
+    "start.bat",
+    "start.sh",
+    "README.md"
+  ],
+  "keywords": [
+    "ai",
+    "automation",
+    "iflow",
+    "cli",
+    "agent",
+    "coding-agent",
+    "autonomous"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ninesun666/clawd.git",
+    "directory": "ai-harness-package"
+  },
+  "bugs": {
+    "url": "https://github.com/ninesun666/clawd/issues"
+  },
+  "homepage": "https://github.com/ninesun666/clawd/tree/main/ai-harness-package#readme",
+  "author": "ninesun",
+  "engines": {
+    "node": ">=16"
+  }
+}

@@ -525,7 +525,10 @@ def run_interactive():
     print(f"\n[*] Found {len(projects)} projects:")
     for i, proj in enumerate(projects, 1):
         status = runner.get_project_status(proj)
-        progress = f"{status['completed']}/{status['total']}"
+        # 兼容 total_tasks 和 total 两种字段名
+        total = status.get('total_tasks') or status.get('total', 0)
+        completed = status.get('completed', 0)
+        progress = f"{completed}/{total}"
         proj_name = Path(proj).name
         print(f"   {i}. {proj_name} ({progress})")
     
@@ -595,7 +598,9 @@ def run_interactive():
             print(f"[*] Projects ({len(projects)}):")
             for i, proj in enumerate(projects, 1):
                 status = runner.get_project_status(proj)
-                progress = f"{status['completed']}/{status['total']}"
+                total = status.get('total_tasks') or status.get('total', 0)
+                completed = status.get('completed', 0)
+                progress = f"{completed}/{total}"
                 proj_name = Path(proj).name
                 print(f"   {i}. {proj_name} ({progress})")
 

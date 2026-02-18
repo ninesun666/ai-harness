@@ -1,0 +1,21 @@
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.env
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build output
+dist/
+build/
+*.egg-info/
+
+# Test images (user generated)
+*.jpg
+*.png
