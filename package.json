@@ -8,9 +8,11 @@
   "files": [
     "bin/",
     "iflow_runner.py",
+    "init_project.py",
     "templates/",
     "start.bat",
     "start.sh",
+    "init.bat",
     "README.md"
   ],
   "keywords": [

@@ -16,7 +16,71 @@
 
 ## 快速开始
 
-### 方式一：双击运行（推荐）
+### 第一步：初始化项目
+
+**Windows:**
+```
+双击 init.bat
+```
+
+**Linux/macOS:**
+```bash
+python init_project.py
+```
+
+启动后会扫描同级和上级目录，显示候选项目列表：
+
+```
+============================================================
+       AI Harness - Project Initializer
+============================================================
+
+[扫描目录]
+  从 C:\Users\gjx\clawd 扫描...
+
+候选项目目录:
+------------------------------------------------------------
+[待初始化]
+  1. task-schedule [java-maven]
+      上级: task-schedule
+  2. ninesun-blog [nodejs]
+      同级: ninesun-blog
+  3. ai-legion [nodejs]
+      同级: ai-legion
+------------------------------------------------------------
+  0. 输入自定义路径
+  Q. 退出
+------------------------------------------------------------
+
+请选择 [1-3/0/Q]: 
+```
+
+选择项目后会自动：
+- 检测项目类型 (Java/Maven, Node.js, Python, Go, Rust)
+- 创建 `.agent-harness/` 目录
+- 生成 `feature_list.json` 任务清单模板
+- 生成 `AGENT_INSTRUCTIONS.md` 工作流程规范
+- 生成 `claude-progress.txt` 进度日志
+
+### 第二步：添加任务
+
+编辑项目中的 `.agent-harness/feature_list.json`，添加开发任务：
+
+```json
+{
+  "features": [
+    {
+      "id": "F001",
+      "description": "实现用户登录功能",
+      "priority": "high",
+      "steps": ["创建登录页面", "实现认证逻辑", "添加单元测试"],
+      "passes": false
+    }
+  ]
+}
+```
+
+### 第三步：运行自动化
 
 **Windows:**
 ```
@@ -120,7 +184,14 @@ python iflow_runner.py --action continuous --project your-project
 ```
 ai-harness/
 ├── iflow_runner.py              # 主调度脚本
+├── init_project.py              # 项目初始化脚本
+├── init.bat                     # Windows 初始化启动
+├── start.bat                    # Windows 主程序启动
+├── start.sh                     # Linux/macOS 主程序启动
 ├── README.md                    # 本文件
+├── templates/                   # 模板文件
+│   ├── feature_list_template.json
+│   └── AGENT_INSTRUCTIONS_template.md
 └── iflow_runner/
     └── AGENT_HARNESS_GUIDE.md   # 详细使用指南
 ```
