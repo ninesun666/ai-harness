@@ -1,0 +1,79 @@
+# AI Harness Configuration Template
+# Copy this file to ~/.ai-harness/config.yaml (global) 
+# or .ai-harness/config.yaml (project)
+
+# Default AI provider to use
+default_provider: iflow
+
+# Project settings (usually set at project level)
+# project_name: my-project
+# project_root: /path/to/project
+# feature_list_path: feature_list.json
+# progress_file: claude-progress.txt
+
+# Scheduler configuration
+scheduler:
+  # Default timeout for task execution (seconds)
+  default_timeout: 600
+  
+  # Maximum number of turns/iterations
+  default_max_turns: 50
+  
+  # Retry configuration
+  retry_attempts: 3
+  retry_delay: 5.0
+  
+  # Parallel execution settings
+  parallel_execution: false
+  max_parallel_tasks: 1
+
+# Report generation settings
+report:
+  # Default output format: json, text, html
+  default_format: json
+  
+  # Output directory for reports
+  output_directory: .ai-harness/reports
+  
+  # Include timestamp in report files
+  include_timestamp: true
+  
+  # Custom templates directory (optional)
+  # templates_directory: /path/to/templates
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log file (optional, logs to console only if not set)
+  # file: /path/to/ai-harness.log
+  
+  # Log to console
+  console: true
+
+# Provider-specific configurations
+# These can be overridden at the provider level
+providers:
+  iflow:
+    enabled: true
+    auto_discover: true
+    settings:
+      # iFlow-specific settings
+      yolo_mode: true
+      output_format: json
+  
+  # Example: Claude Code provider config
+  # claude:
+  #   enabled: true
+  #   auto_discover: true
+  #   settings:
+  #     api_key_env: ANTHROPIC_API_KEY
+  #     model: claude-3-opus-20240229
+
+# Debug settings
+debug_mode: false
+dry_run: false

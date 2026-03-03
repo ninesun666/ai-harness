@@ -7,6 +7,7 @@
   },
   "files": [
     "bin/",
+    "ai_harness/**",
     "iflow_runner.py",
     "init_project.py",
     "templates/",
