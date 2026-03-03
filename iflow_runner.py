@@ -160,7 +160,8 @@ class iFlowRunner:
             return "无特定步骤，按需执行"
         return "\n".join(f"{i+1}. {s}" for i, s in enumerate(steps))
     
-    def run_iflow(self, prompt: str, timeout: int = 600, max_turns: int = 50) -> Dict:
+    def run_iflow(self, prompt: str, timeout: int = 600, max_turns: int = 50, 
+                  project_cwd: Optional[str] = None) -> Dict:
         """
         调用 iFlow CLI 执行任务
         
@@ -168,6 +169,7 @@ class iFlowRunner:
             prompt: 执行的 prompt
             timeout: 超时时间 (秒)
             max_turns: 最大轮次
+            project_cwd: 目标项目的工作目录（iFlow 会在此目录运行）
             
         Returns:
             执行结果
@@ -177,6 +179,9 @@ class iFlowRunner:
                 "success": False,
                 "error": "iflow 命令未找到，请确保已安装 iFlow CLI"
             }
+        
+        # 确定工作目录：优先使用目标项目目录，否则使用 runner 的项目根目录
+        work_dir = Path(project_cwd).resolve() if project_cwd else self.project_root
         
         output_file = self.project_root / f"iflow_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
@@ -190,6 +195,7 @@ class iFlowRunner:
         ]
         
         print(f"\n执行命令: {self.iflow_path} -p ... --yolo --max-turns={max_turns}")
+        print(f"工作目录: {work_dir}")
         
         # 设置环境变量，确保能找到 node 和 npm
         env = os.environ.copy()
@@ -206,7 +212,7 @@ class iFlowRunner:
             
             result = subprocess.run(
                 cmd,
-                cwd=str(self.project_root),
+                cwd=str(work_dir),  # 在目标项目目录运行 iFlow
                 capture_output=True,
                 text=True,
                 timeout=timeout + 60,  # 额外给一些缓冲时间
@@ -330,6 +336,18 @@ class iFlowRunner:
     
     def run_single(self, project_name: str = "ninesun-blog", timeout: int = 600, max_turns: int = 50) -> Dict:
         """执行单次任务"""
+        # 解析项目路径
+        if Path(project_name).is_absolute():
+            project_path = Path(project_name)
+        else:
+            # 先尝试在当前目录下查找
+            project_path = self.project_root / project_name
+            if not project_path.exists():
+                # 再尝试父目录
+                project_path = self.project_root.parent / project_name
+        
+        project_path = project_path.resolve()
+        
         # 获取下一个任务
         task = self.get_next_task(project_name)
         
@@ -341,16 +359,17 @@ class iFlowRunner:
         
         print(f"\n{'='*60}")
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行任务")
+        print(f"项目路径: {project_path}")
         print(f"ID: {task.get('id')}")
         print(f"描述: {task.get('description')}")
         print(f"优先级: {task.get('priority')}")
         print(f"{'='*60}")
         
         # 生成 prompt
-        prompt = self.generate_prompt(task, project_name)
+        prompt = self.generate_prompt(task, Path(project_path).name)
         
-        # 调用 iFlow
-        result = self.run_iflow(prompt, timeout, max_turns)
+        # 调用 iFlow，传入项目目录作为工作目录
+        result = self.run_iflow(prompt, timeout, max_turns, project_cwd=str(project_path))
         
         # 检查任务是否完成
         updated_task = self.get_next_task(project_name)

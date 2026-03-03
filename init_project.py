@@ -569,40 +569,93 @@ def run_interactive():
         else:
             no_harness.append((path, label))
     
-    # 显示候选目录
-    print(f"\n{Colors.BOLD}候选项目目录:{Colors.RESET}")
-    print("-" * 60)
+    # 分页设置
+    PAGE_SIZE = 10
+    all_items = [(p, l, 'new') for p, l in no_harness] + [(p, l, 'existing') for p, l in has_harness]
+    total = len(all_items)
+    total_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
+    current_page = 0
     
-    idx = 1
-    
-    # 未初始化的目录 (优先)
-    if no_harness:
-        print(f"\n{Colors.GREEN}[待初始化]{Colors.RESET}")
-        for path, label in no_harness[:15]:
+    while True:
+        # 清屏并显示当前页
+        print("\033[2J\033[H", end="")  # Clear screen and move cursor to top
+        print_header()
+        
+        print(f"{Colors.BOLD}候选项目目录 ({total} 个){Colors.RESET}")
+        print("-" * 60)
+        
+        start_idx = current_page * PAGE_SIZE
+        end_idx = min(start_idx + PAGE_SIZE, total)
+        display_idx = 1
+        
+        for i in range(start_idx, end_idx):
+            path, label, status = all_items[i]
             info = detect_project_type(path)
             type_tag = f"[{info['type']}]" if info['type'] != 'unknown' else ""
-            print(f"  {Colors.GREEN}{idx}{Colors.RESET}. {path.name} {type_tag}")
-            print(f"      {label}")
-            idx += 1
-    
-    # 已初始化的目录
-    if has_harness:
-        print(f"\n{Colors.YELLOW}[已初始化]{Colors.RESET}")
-        for path, label in has_harness[:10]:
-            info = detect_project_type(path)
-            type_tag = f"[{info['type']}]" if info['type'] != 'unknown' else ""
-            print(f"  {Colors.YELLOW}{idx}{Colors.RESET}. {path.name} {type_tag} (已有 .agent-harness)")
-            print(f"      {label}")
-            idx += 1
-    
-    print("-" * 60)
-    print(f"  {Colors.CYAN}0{Colors.RESET}. 输入自定义路径")
-    print(f"  {Colors.CYAN}Q{Colors.RESET}. 退出")
-    print("-" * 60)
-    
-    # 选择
-    total = len(no_harness) + len(has_harness)
-    choice = input(f"\n请选择 [1-{total}/0/Q]: ").strip().upper()
+            
+            if status == 'new':
+                print(f"  {Colors.GREEN}{i+1}{Colors.RESET}. {path.name} {type_tag}")
+                print(f"      {Colors.GREEN}[待初始化]{Colors.RESET} {label}")
+            else:
+                print(f"  {Colors.YELLOW}{i+1}{Colors.RESET}. {path.name} {type_tag}")
+                print(f"      {Colors.YELLOW}[已初始化]{Colors.RESET} {label}")
+            print()
+        
+        print("-" * 60)
+        
+        # 分页导航提示
+        nav_hints = []
+        if current_page > 0:
+            nav_hints.append(f"{Colors.CYAN}P{Colors.RESET}=上一页")
+        if current_page < total_pages - 1:
+            nav_hints.append(f"{Colors.CYAN}N{Colors.RESET}=下一页")
+        nav_hints.append(f"{Colors.CYAN}0{Colors.RESET}=自定义路径")
+        nav_hints.append(f"{Colors.CYAN}Q{Colors.RESET}=退出")
+        
+        print(f"  {' | '.join(nav_hints)}")
+        print(f"  页码: {current_page + 1}/{total_pages}")
+        print("-" * 60)
+        
+        # 选择
+        choice = input(f"\n请选择 [1-{total}]: ").strip().upper()
+        
+        if choice == 'Q' or choice == '':
+            print("\n已退出")
+            return
+        
+        if choice == '0':
+            print("\n请输入目标目录路径:")
+            custom_path = input("> ").strip()
+            if not custom_path:
+                continue
+            target_dir = Path(custom_path)
+            if not target_dir.exists():
+                print(f"{Colors.RED}[错误]{Colors.RESET} 目录不存在: {custom_path}")
+                input("按回车继续...")
+                continue
+            break
+        
+        if choice == 'P' and current_page > 0:
+            current_page -= 1
+            continue
+        
+        if choice == 'N' and current_page < total_pages - 1:
+            current_page += 1
+            continue
+        
+        try:
+            num = int(choice)
+            if num < 1 or num > total:
+                print(f"{Colors.RED}[错误]{Colors.RESET} 无效选择: {num}")
+                input("按回车继续...")
+                continue
+            
+            target_dir, _, _ = all_items[num - 1]
+            break
+        except ValueError:
+            print(f"{Colors.RED}[错误]{Colors.RESET} 无效输入: {choice}")
+            input("按回车继续...")
+            continue
     
     if choice == 'Q' or choice == '':
         print("\n已退出")
