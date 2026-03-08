@@ -30,6 +30,42 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 
+def load_config(project_root: str) -> Dict[str, Any]:
+    """
+    加载配置文件，按优先级查找：
+    1. 项目目录下的 .ai-harness.config
+    2. 项目目录下的 .ai-harness/config.json
+    3. 用户主目录下的 ~/.ai-harness/config.json
+    4. 模板目录下的 templates/ai-harness.config.json
+    
+    Returns:
+        配置字典
+    """
+    project_path = Path(project_root).resolve()
+    
+    # 按优先级查找配置文件
+    config_paths = [
+        project_path / ".ai-harness.config",
+        project_path / ".ai-harness" / "config.json",
+        Path.home() / ".ai-harness" / "config.json",
+        project_path / "templates" / "ai-harness.config.json",
+    ]
+    
+    for config_path in config_paths:
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                print(f"📋 已加载配置: {config_path}")
+                return config
+            except json.JSONDecodeError as e:
+                print(f"⚠️ 配置文件格式错误 {config_path}: {e}")
+            except Exception as e:
+                print(f"⚠️ 加载配置文件失败 {config_path}: {e}")
+    
+    return {}
+
+
 def find_iflow_path() -> Optional[str]:
     """
     查找 iflow 命令的完整路径
@@ -110,12 +146,20 @@ class iFlowRunner:
         features = data.get("features", [])
         
         # 按优先级排序，找到第一个未完成的
-        priority_order = {"high": 0, "medium": 1, "low": 2}
+        priority_order = {"P0": 0, "P1": 1, "P2": 2, "high": 0, "medium": 1, "low": 2}
         
-        pending = [
-            f for f in features 
-            if not f.get("passes", False)
-        ]
+        def is_pending(f):
+            # 兼容两种状态字段：status 和 passes
+            status = f.get("status", "")
+            passes = f.get("passes")
+            # status 为 pending/in_progress 或 passes 为 False/None 都算未完成
+            if status in ["completed", "done"]:
+                return False
+            if passes is True:
+                return False
+            return True
+        
+        pending = [f for f in features if is_pending(f)]
         
         if not pending:
             return None
@@ -302,17 +346,32 @@ class iFlowRunner:
                 data = json.load(f)
             
             features = data.get("features", [])
-            completed = sum(1 for f in features if f.get("passes", False))
+            
+            def is_completed(f):
+                status = f.get("status", "")
+                passes = f.get("passes")
+                return status in ["completed", "done"] or passes is True
+            
+            def is_pending(f):
+                status = f.get("status", "")
+                passes = f.get("passes")
+                if status in ["completed", "done"]:
+                    return False
+                if passes is True:
+                    return False
+                return True
+            
+            completed = sum(1 for f in features if is_completed(f))
             total = len(features)
             
             # 获取下一个任务
             next_task = None
             for feature in features:
-                if not feature.get("passes", False):
+                if is_pending(feature):
                     # 检查依赖是否满足
                     deps = feature.get("dependencies", [])
                     deps_satisfied = all(
-                        any(f.get("id") == dep and f.get("passes", False) for f in features)
+                        any(f.get("id") == dep and is_completed(f) for f in features)
                         for dep in deps
                     )
                     if deps_satisfied:
@@ -445,7 +504,13 @@ class iFlowRunner:
             data = json.load(f)
         
         features = data.get("features", [])
-        completed = sum(1 for f in features if f.get("passes", False))
+        
+        def is_completed(f):
+            status = f.get("status", "")
+            passes = f.get("passes")
+            return status in ["completed", "done"] or passes is True
+        
+        completed = sum(1 for f in features if is_completed(f))
         total = len(features)
         
         return {
@@ -459,15 +524,35 @@ class iFlowRunner:
 
 
 def main():
+    # 先解析 --project-root 以便加载正确的配置文件
     parser = argparse.ArgumentParser(description='iFlow Runner - 自动化运行 iFlow CLI')
     parser.add_argument('--project-root', default=str(Path.cwd()), help='项目根目录')
+    
+    # 先解析 project-root
+    preliminary_args, _ = parser.parse_known_args()
+    
+    # 加载配置文件
+    config = load_config(preliminary_args.project_root)
+    scheduler_config = config.get('scheduler', {})
+    
+    # 从配置文件获取默认值
+    default_interval = scheduler_config.get('interval', 60)
+    default_timeout = scheduler_config.get('default_timeout', 600)
+    default_max_turns = scheduler_config.get('default_max_turns', 50)
+    default_max_iterations = scheduler_config.get('max_iterations', 100)
+    
+    # 添加完整的参数解析
     parser.add_argument('--project', default=None, help='项目名称或路径')
     parser.add_argument('--action', choices=['run', 'continuous', 'status', 'scan'], 
                        default='status', help='执行的操作')
-    parser.add_argument('--interval', type=int, default=60, help='持续模式间隔秒数')
-    parser.add_argument('--timeout', type=int, default=600, help='单次执行超时秒数')
-    parser.add_argument('--max-turns', type=int, default=50, help='单次执行最大轮次')
-    parser.add_argument('--max-iterations', type=int, default=100, help='持续模式最大迭代次数')
+    parser.add_argument('--interval', type=int, default=default_interval, 
+                       help=f'持续模式间隔秒数 (默认: {default_interval})')
+    parser.add_argument('--timeout', type=int, default=default_timeout, 
+                       help=f'单次执行超时秒数 (默认: {default_timeout})')
+    parser.add_argument('--max-turns', type=int, default=default_max_turns, 
+                       help=f'单次执行最大轮次 (默认: {default_max_turns})')
+    parser.add_argument('--max-iterations', type=int, default=default_max_iterations, 
+                       help=f'持续模式最大迭代次数 (默认: {default_max_iterations})')
     
     args = parser.parse_args()
     

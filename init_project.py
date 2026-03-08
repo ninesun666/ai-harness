@@ -175,55 +175,22 @@ def extract_maven_modules(pom_content: str) -> List[str]:
 
 def scan_candidate_dirs(script_dir: Path) -> List[Tuple[Path, str]]:
     """
-    扫描候选目录
+    扫描同级目录中的候选项目
     
     Returns:
         [(目录路径, 显示标签), ...]
     """
     candidates = []
     
-    # 1. 同级目录
+    # 只扫描同级目录
     parent = script_dir.parent
     if parent.exists():
         for item in parent.iterdir():
             if item.is_dir() and not item.name.startswith('.'):
                 if item.name not in ['node_modules', '__pycache__', '.git', 'dist', 'build', 'target']:
-                    candidates.append((item, f"同级: {item.name}"))
+                    candidates.append((item, item.name))
     
-    # 2. 上级目录的子目录
-    grandparent = parent.parent
-    if grandparent.exists() and grandparent != parent:
-        for item in grandparent.iterdir():
-            if item.is_dir() and not item.name.startswith('.'):
-                if item.name not in ['node_modules', '__pycache__', '.git', 'dist', 'build', 'target']:
-                    if item != parent:  # 避免重复
-                        candidates.append((item, f"上级: {item.name}"))
-    
-    # 3. 常见开发目录
-    common_dev_dirs = [
-        Path.home() / "projects",
-        Path.home() / "workspace",
-        Path.home() / "code",
-        Path.home() / "dev",
-        Path("C:/Users") / os.environ.get("USERNAME", "") / "Desktop" / "workspace",
-    ]
-    
-    for dev_dir in common_dev_dirs:
-        if dev_dir.exists():
-            for item in dev_dir.iterdir():
-                if item.is_dir() and not item.name.startswith('.'):
-                    if item not in [c[0] for c in candidates]:
-                        candidates.append((item, f"开发目录: {item.name}"))
-    
-    # 去重并排序
-    seen = set()
-    unique_candidates = []
-    for path, label in candidates:
-        if str(path) not in seen:
-            seen.add(str(path))
-            unique_candidates.append((path, label))
-    
-    return sorted(unique_candidates, key=lambda x: x[0].name.lower())
+    return sorted(candidates, key=lambda x: x[0].name.lower())
 
 
 def get_project_description(project_dir: Path, project_info: Dict) -> str:

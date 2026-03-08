@@ -1,0 +1,14 @@
+{
+  "scheduler": {
+    "default_timeout": 600,
+    "default_max_turns": 50,
+    "interval": 60,
+    "max_iterations": 100,
+    "retry_attempts": 3,
+    "retry_delay": 5.0
+  },
+  "runner": {
+    "auto_select_project": true,
+    "show_progress": true
+  }
+}
