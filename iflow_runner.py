@@ -605,6 +605,13 @@ def run_interactive():
     print("=" * 60)
     print()
     
+    # 加载配置文件
+    config = load_config(os.getcwd())
+    scheduler_config = config.get('scheduler', {})
+    default_interval = scheduler_config.get('interval', 60)
+    default_timeout = scheduler_config.get('default_timeout', 600)
+    default_max_turns = scheduler_config.get('default_max_turns', 50)
+    
     # 检查依赖
     iflow_path = find_iflow_path()
     if iflow_path:
@@ -670,7 +677,7 @@ def run_interactive():
             if proj:
                 print(f"\n[>] Running: {proj}")
                 print("="*60)
-                result = runner.run_single(proj)
+                result = runner.run_single(proj, timeout=default_timeout, max_turns=default_max_turns)
                 print("\nResult:", json.dumps(result, ensure_ascii=False, indent=2))
                 projects = runner.scan_projects()  # 刷新项目列表
                 
@@ -682,7 +689,8 @@ def run_interactive():
                 print("="*60)
                 print("Press Ctrl+C to stop")
                 print()
-                runner.run_continuous(proj, interval=60)
+                runner.run_continuous(proj, interval=default_interval, 
+                                     timeout=default_timeout, max_turns=default_max_turns)
                 projects = runner.scan_projects()  # 刷新项目列表
                 
         elif choice == '4':
